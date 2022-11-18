@@ -16,7 +16,7 @@ module Minitest
     class JUnitReporter < BaseReporter
       DEFAULT_REPORTS_DIR = "test/reports"
 
-      attr_reader :reports_path
+      attr_reader :reports_path, :base_path
 
       def initialize(reports_dir = DEFAULT_REPORTS_DIR, empty = true, options = {})
         super({})
@@ -61,30 +61,11 @@ module Minitest
         end
       end
 
-      def get_relative_path(result)
-        file_path = Pathname.new(get_source_location(result).first)
-        base_path = Pathname.new(@base_path)
-
-        if file_path.absolute?
-          file_path.relative_path_from(base_path)
-        else
-          file_path
-        end
-      end
-
       private
-
-      def get_source_location(result)
-        if result.respond_to? :source_location
-          result.source_location
-        else
-          result.method(result.name).source_location
-        end
-      end
 
       def parse_xml_for(xml, suite, tests)
         suite_result = analyze_suite(tests)
-        file_path = get_relative_path(tests.first)
+        file_path = get_relative_path(tests.first, @base_path)
 
         if @timestamp_report
           xml.testsuite(:name => suite, :filepath => file_path,
@@ -153,16 +134,6 @@ module Minitest
         elsif test.error?
           "Error:\n#{name}(#{suite}):\n#{e.message}"
         end
-      end
-
-      def location(exception)
-        last_before_assertion = ''
-        exception.backtrace.reverse_each do |s|
-          break if s =~ /in .(assert|refute|flunk|pass|fail|raise|must|wont)/
-
-          last_before_assertion = s
-        end
-        last_before_assertion.sub(/:in .*$/, '')
       end
 
       def analyze_suite(tests)
